@@ -18,6 +18,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var hero: SKSpriteNode!
     var scrollLayer: SKNode!
     var obstacleLayer: SKNode!
+    var sphereLayer: SKNode!
     var cloudLayer: SKNode!
     var obstacleSource: SKNode!
     var sphereSource: SKNode!
@@ -29,6 +30,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var sinceTouch : CFTimeInterval = 0
     var spawnTimer: CFTimeInterval = 0
     var spawnModified: CFTimeInterval = 1.5
+    var spawnTimerSphere: CFTimeInterval = 0
     
     let fixedDelta: CFTimeInterval = 1.0/60.0 /* 60 FPS */
     var scrollSpeed: CGFloat = 160
@@ -53,6 +55,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         /* Set reference to obstacle layer node */
         obstacleLayer = self.childNode(withName: "obstacleLayer")
+
+        /* Set reference to obstacle layer node */
+        sphereLayer = self.childNode(withName: "sphereLayer")
         
         /* Set reference to obstacle Source node */
         obstacleSource = self.childNode(withName: "obstacle")
@@ -253,41 +258,41 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     func updateSpheres() {
         /* Update Spheres */
         
-        obstacleLayer.position.x -= scrollSpeed * CGFloat(fixedDelta)
+        sphereLayer.position.x -= scrollSpeed * CGFloat(fixedDelta)
         
         /* Loop through obstacle layer nodes */
-        for obstacle in obstacleLayer.children as! [SKReferenceNode] {
+        for sphere in sphereLayer.children as! [SKReferenceNode] {
             
             /* Get obstacle node position, convert node position to scene space */
-            let obstaclePosition = obstacleLayer.convert(obstacle.position, to: self)
+            let spherePosition = sphereLayer.convert(sphere.position, to: self)
             
             /* Check if obstacle has left the scene */
-            if obstaclePosition.x <= 0 {
+            if spherePosition.x <= 0 {
                 
                 /* Remove obstacle node from obstacle layer */
-                obstacle.removeFromParent()
+                sphere.removeFromParent()
             }
             
         }
         
         /* Time to add a new obstacle? */
-        if spawnTimer >= 2.0 {
+        if spawnTimerSphere >= 2.0 {
             
             /* Create a new obstacle reference object using our obstacle resource */
             let newObstacle = sphereSource.copy() as! SKNode
-            obstacleLayer.addChild(newObstacle)
+            sphereLayer.addChild(newObstacle)
             
             /* Generate new obstacle position, start just outside screen and with a random y value */
-            let randomPosition = CGPoint(x: 400, y: CGFloat.random(min: 234, max: 382))
+            let randomPosition = CGPoint(x: 400, y: CGFloat.random(min: 150, max: 450))
             
             /* Convert new node position back to obstacle layer space */
-            newObstacle.position = self.convert(randomPosition, to: obstacleLayer)
+            newObstacle.position = self.convert(randomPosition, to: sphereLayer)
             
             // Reset spawn timer
-            spawnTimer = 0
+            spawnTimerSphere = 0
         }
         
-        spawnTimer += fixedDelta
+        spawnTimerSphere += fixedDelta
         
     }
     
@@ -315,6 +320,26 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             /* Play SFX */
             let goalSFX = SKAction.playSoundFileNamed("SFX/sfx_goal", waitForCompletion: false)
             self.run(goalSFX)
+            
+            /* We can return now */
+            return
+        }
+        
+        /* Did our hero hit the 'sphere'? */
+        if contactA.categoryBitMask == 16 || contactB.categoryBitMask == 16 {
+            
+            /* Increment points */
+            points += 1
+            
+            /* Update score label */
+            scoreLabel.text = String(points)
+            
+            /* Play SFX */
+            let goalSFX = SKAction.playSoundFileNamed("SFX/sfx_goal", waitForCompletion: false)
+            self.run(goalSFX)
+            
+            if contactA.categoryBitMask == 16 { removeSphere(node: nodeA) }
+            if contactB.categoryBitMask == 16 { removeSphere(node: nodeB) }
             
             /* We can return now */
             return
@@ -358,5 +383,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         /* Show restart button */
         buttonRestart.state = .Active
+    }
+    
+    func removeSphere(node: SKNode) {
+        
+        let sphereHit = SKAction.run({
+            /* Remove seal node from scene */
+            node.removeFromParent()
+        })
+        self.run(sphereHit)
     }
 }
